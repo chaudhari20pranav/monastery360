@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Monastery · Monastery360</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <style>
+    .detail-hero { padding-top:var(--nav-h); background:var(--bg2); border-bottom:1px solid var(--border); }
+    .detail-hero-inner { display:grid; grid-template-columns:1fr 1fr; min-height:460px; }
+    .detail-hero-img { position:relative; overflow:hidden; }
+    .detail-hero-img img { width:100%; height:100%; object-fit:cover; display:block; }
+    .detail-hero-info { padding:48px 40px; display:flex; flex-direction:column; justify-content:center; }
+    .detail-back { color:var(--muted); font-size:0.85rem; margin-bottom:20px; cursor:pointer; transition:color var(--transition); display:inline-flex; align-items:center; gap:6px; background:none; border:none; font-family:var(--font-body); }
+    .detail-back:hover { color:var(--gold); }
+    .detail-title { font-family:var(--font-display); font-size:clamp(1.8rem,3vw,2.6rem); color:var(--white); margin-bottom:8px; }
+    .detail-location { color:var(--gold); font-size:1rem; margin-bottom:16px; }
+    .detail-meta { display:flex; gap:20px; flex-wrap:wrap; margin-bottom:16px; }
+    .detail-meta-item { display:flex; flex-direction:column; gap:3px; }
+    .detail-meta-label { font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; }
+    .detail-meta-value { font-size:0.92rem; color:var(--white); }
+    .detail-desc { color:var(--muted); font-size:0.92rem; line-height:1.8; font-weight:300; margin-bottom:24px; }
+    .detail-actions { display:flex; gap:10px; flex-wrap:wrap; }
+
+    /* Quick Action Buttons in hero */
+    .quick-actions { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+    .quick-btn {
+      display:inline-flex; align-items:center; gap:6px;
+      padding:8px 14px; border-radius:8px; font-size:0.82rem;
+      background:rgba(255,255,255,0.06); border:1px solid var(--border);
+      color:var(--muted); cursor:pointer; transition:all var(--transition);
+    }
+    .quick-btn:hover { border-color:var(--gold); color:var(--gold); background:rgba(201,168,76,0.08); }
+    .quick-btn.active { background:rgba(201,168,76,0.15); border-color:var(--gold); color:var(--gold); }
+
+    /* Tabs */
+    .tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:32px; overflow-x:auto; }
+    .tab { padding:14px 22px; font-size:0.9rem; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; transition:all var(--transition); white-space:nowrap; background:none; border-left:none; border-right:none; border-top:none; font-family:var(--font-body); }
+    .tab:hover { color:var(--white); }
+    .tab.active { color:var(--gold); border-bottom-color:var(--gold); }
+    .tab-content { display:none; animation:fadeIn 0.3s ease; }
+    .tab-content.active { display:block; }
+
+    /* 360 Tour */
+    .view-item { border-radius:12px; overflow:hidden; border:1px solid var(--border); background:var(--bg3); margin-bottom:16px; }
+    .view-label { padding:12px 16px; background:var(--surface); border-bottom:1px solid var(--border); font-size:0.85rem; color:var(--muted); display:flex; align-items:center; justify-content:space-between; }
+    .view-label a { color:var(--gold); font-size:0.78rem; }
+    .panorama-frame { aspect-ratio:16/9; }
+    .panorama-frame iframe { width:100%; height:100%; border:none; display:block; }
+
+    /* Video */
+    .video-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; }
+    .video-item { aspect-ratio:16/9; border-radius:12px; overflow:hidden; border:1px solid var(--border); }
+    .video-item iframe { width:100%; height:100%; border:none; }
+
+    /* Facts */
+    .facts-grid { display:grid; grid-template-columns:1fr 1fr; gap:32px; }
+    .fact-row { display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--border); font-size:0.9rem; }
+    .fact-label { color:var(--muted); }
+    .fact-val { color:var(--white); text-align:right; max-width:55%; word-break:break-word; }
+
+    /* Audio Guide */
+    .audio-guide-wrap { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:28px; }
+    .audio-lang-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:24px; }
+    .audio-lang-btn { padding:7px 16px; border-radius:999px; font-size:0.82rem; background:var(--surface); border:1px solid var(--border); color:var(--muted); cursor:pointer; transition:all var(--transition); }
+    .audio-lang-btn:hover { border-color:var(--gold); color:var(--gold); }
+    .audio-lang-btn.active { background:var(--gold); color:#0d0d0f; border-color:var(--gold); }
+
+    .tts-player { background:var(--bg3); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:20px; }
+    .tts-controls { display:flex; align-items:center; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
+    .tts-btn { width:44px; height:44px; border-radius:50%; border:none; cursor:pointer; font-size:1.2rem; display:flex; align-items:center; justify-content:center; transition:all var(--transition); }
+    .tts-play { background:var(--gold); color:#0d0d0f; }
+    .tts-play:hover { background:#e8c97a; }
+    .tts-stop { background:var(--surface); border:1px solid var(--border); color:var(--muted); }
+    .tts-stop:hover { border-color:var(--gold); color:var(--gold); }
+    .tts-info { flex:1; }
+    .tts-title { font-size:0.92rem; color:var(--white); font-weight:500; margin-bottom:3px; }
+    .tts-sublabel { font-size:0.78rem; color:var(--muted); }
+    .tts-speed { display:flex; align-items:center; gap:8px; font-size:0.8rem; color:var(--muted); }
+    .tts-speed select { background:var(--surface); border:1px solid var(--border); color:var(--white); padding:3px 8px; border-radius:6px; font-size:0.78rem; }
+    .tts-progress { height:4px; background:var(--border); border-radius:2px; overflow:hidden; position:relative; }
+    .tts-progress-bar { height:100%; background:var(--gold); transition:width 0.3s; width:0%; border-radius:2px; }
+    .tts-text-preview { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:16px; font-size:0.87rem; color:var(--muted); line-height:1.8; max-height:200px; overflow-y:auto; }
+    .tts-text-preview mark { background:rgba(201,168,76,0.2); color:var(--white); border-radius:3px; padding:0 2px; }
+
+    .no-tts-msg { background:rgba(201,168,76,0.06); border:1px solid rgba(201,168,76,0.2); border-radius:8px; padding:14px 16px; font-size:0.85rem; color:var(--muted); }
+
+    @media(max-width:900px) {
+      .detail-hero-inner { grid-template-columns:1fr; }
+      .detail-hero-img { height:280px; }
+      .detail-hero-info { padding:28px 20px; }
+      .facts-grid { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+<div id="navbar-placeholder"></div>
+
+<div id="detail-root">
+  <div class="loading-spinner" style="min-height:100vh;">
+    <div class="spinner"></div><span>Loading monastery…</span>
+  </div>
+</div>
+
+<div id="footer-placeholder"></div>
+
+<script src="js/api.js"></script>
+<script src="js/components.js"></script>
+<script src="js/main.js"></script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const monasteryId = params.get('id');
+  if (!monasteryId) window.location.href = 'monasteries.html';
+
+  let monastery  = null;
+  let activeTab  = 'overview';
+
+  // ── TTS state ──────────────────────────────────────────────────────────────
+  let ttsUtterance = null;
+  let ttsActive    = false;
+  let ttsLang      = 'en';
+  let ttsSentences = [];
+  let ttsCurrent   = 0;
+
+  function escHtml(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function ytEmbed(url) {
+    const m = url.match(/(?:youtu\.be\/|[?&]v=|embed\/)([A-Za-z0-9_-]{11})/);
+    return m ? `https://www.youtube.com/embed/${m[1]}?rel=0` : null;
+  }
+
+  // ── TTS helpers ────────────────────────────────────────────────────────────
+  const ttsSupported = 'speechSynthesis' in window;
+
+  function ttsGetText() {
+    if (!monastery || !monastery.audioGuideText) return '';
+    return monastery.audioGuideText[ttsLang] || monastery.audioGuideText['en'] || '';
+  }
+
+  function ttsSplit(text) {
+    return text.match(/[^\.!\?]+[\.!\?]+/g) || [text];
+  }
+
+  function ttsStop() {
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    ttsActive  = false;
+    ttsCurrent = 0;
+    updateTTSUI();
+    updateProgress(0);
+  }
+
+  function ttsPlay() {
+    if (!ttsSupported) return;
+    const text = ttsGetText();
+    if (!text) return;
+
+    ttsStop();
+    ttsActive  = true;
+    ttsSentences = ttsSplit(text);
+    ttsCurrent   = 0;
+    speakNext();
+  }
+
+  function speakNext() {
+    if (!ttsActive || ttsCurrent >= ttsSentences.length) {
+      ttsActive = false;
+      ttsCurrent = 0;
+      updateTTSUI();
+      updateProgress(0);
+      return;
+    }
+    const sentence = ttsSentences[ttsCurrent].trim();
+    const utter = new SpeechSynthesisUtterance(sentence);
+
+    // Set language voice
+    const langMap = { en: 'en-IN', hi: 'hi-IN', ne: 'ne-NP', bo: 'zh-CN', zh: 'zh-CN' };
+    utter.lang = langMap[ttsLang] || 'en-IN';
+
+    const speedEl = document.getElementById('tts-speed-sel');
+    utter.rate = speedEl ? parseFloat(speedEl.value) : 0.9;
+    utter.pitch = 1;
+
+    // Highlight current sentence in preview
+    highlightSentence(ttsCurrent);
+    updateProgress((ttsCurrent / ttsSentences.length) * 100);
+
+    utter.onend = () => {
+      ttsCurrent++;
+      speakNext();
+    };
+    utter.onerror = () => {
+      ttsCurrent++;
+      speakNext();
+    };
+
+    window.speechSynthesis.speak(utter);
+    ttsUtterance = utter;
+    updateTTSUI();
+  }
+
+  function updateTTSUI() {
+    const playBtn = document.getElementById('tts-play-btn');
+    if (!playBtn) return;
+    playBtn.textContent = ttsActive ? '⏸' : '▶';
+  }
+
+  function updateProgress(pct) {
+    const bar = document.getElementById('tts-progress-bar');
+    if (bar) bar.style.width = pct + '%';
+  }
+
+  function highlightSentence(idx) {
+    const preview = document.getElementById('tts-text');
+    if (!preview) return;
+    const text = ttsGetText();
+    const parts = ttsSplit(text);
+    preview.innerHTML = parts.map((s, i) =>
+      i === idx ? `<mark>${escHtml(s)}</mark>` : escHtml(s)
+    ).join(' ');
+  }
+
+  function toggleTTS() {
+    if (ttsActive) {
+      ttsStop();
+    } else {
+      ttsPlay();
+    }
+  }
+
+  function changeTTSLang(lang) {
+    ttsStop();
+    ttsLang = lang;
+    // Update lang buttons
+    document.querySelectorAll('.audio-lang-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.lang === lang);
+    });
+    // Update preview text
+    const preview = document.getElementById('tts-text');
+    if (preview) preview.innerHTML = escHtml(ttsGetText());
+    updateTTSUI();
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+  function renderDetail(m) {
+    const name     = getTranslation(m, 'name');
+    const location = getTranslation(m, 'location');
+    const desc     = getTranslation(m, 'description');
+    const festival = getTranslation(m, 'festival');
+    document.title = `${name} · Monastery360`;
+
+    const LANG     = window.LANGUAGES || {};
+    const activeLang = window.currentLang || 'en';
+    const hasViews  = m.views  && m.views.length  > 0;
+    const hasVideos = m.videos && m.videos.length > 0;
+
+    document.getElementById('detail-root').innerHTML = `
+    <div class="detail-hero">
+      <div class="detail-hero-inner">
+        <div class="detail-hero-img">
+          <img src="assets/images/${escHtml(m.image)}" alt="${escHtml(name)}"
+               onerror="this.src='https://placehold.co/800x500/1e1e2e/c9a84c?text=${encodeURIComponent(m.name)}'"/>
+        </div>
+        <div class="detail-hero-info">
+          <button class="detail-back" onclick="history.back()">← Back to Monasteries</button>
+          <h1 class="detail-title">${escHtml(name)}</h1>
+          <div class="detail-location">📍 ${escHtml(location)}</div>
+          <div class="detail-meta">
+            <div class="detail-meta-item">
+              <span class="detail-meta-label">Founded</span>
+              <span class="detail-meta-value">${escHtml(m.founded)}</span>
+            </div>
+            <div class="detail-meta-item">
+              <span class="detail-meta-label">Festival</span>
+              <span class="detail-meta-value">${escHtml(festival)}</span>
+            </div>
+            ${m.coordinates && m.coordinates.latitude ? `<div class="detail-meta-item">
+              <span class="detail-meta-label">Coordinates</span>
+              <span class="detail-meta-value">${m.coordinates.latitude.toFixed(3)}°N, ${m.coordinates.longitude.toFixed(3)}°E</span>
+            </div>` : ''}
+          </div>
+
+          <!-- Quick action buttons -->
+          <div class="quick-actions">
+            ${hasViews  ? `<button class="quick-btn" onclick="switchTab('tours')">🌐 360° Tour</button>` : ''}
+            <button class="quick-btn" onclick="switchTab('audio')">🔊 Audio Guide</button>
+            ${hasVideos ? `<button class="quick-btn" onclick="switchTab('videos')">🎥 Videos</button>` : ''}
+            ${m.coordinates && m.coordinates.latitude ? `<a href="map.html" class="quick-btn">🗺️ View on Map</a>` : ''}
+          </div>
+
+          <p class="detail-desc">${escHtml(desc)}</p>
+          <div class="detail-actions">
+            ${m.link ? `<a href="${escHtml(m.link)}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm">Wikipedia ↗</a>` : ''}
+            <a href="booking.html?monastery=${escHtml(m._id)}" class="btn btn-primary btn-sm">Book Visit</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section class="section">
+      <div class="container">
+        <div class="tabs" id="tabs-bar">
+          <button class="tab" data-tab="overview">Overview</button>
+          ${hasViews  ? '<button class="tab" data-tab="tours">🌐 360° Tour</button>'   : ''}
+          <button class="tab" data-tab="audio">🔊 Audio Guide</button>
+          ${hasVideos ? '<button class="tab" data-tab="videos">🎥 Videos</button>' : ''}
+        </div>
+
+        <!-- OVERVIEW -->
+        <div id="tab-overview" class="tab-content">
+          <div class="facts-grid">
+            <div>
+              <h3 style="font-family:var(--font-display);color:var(--gold);margin-bottom:16px;">About this Monastery</h3>
+              <p style="color:var(--muted);line-height:1.85;font-weight:300;">${escHtml(desc)}</p>
+              ${m.link ? `<a href="${escHtml(m.link)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="margin-top:20px;">Read full history ↗</a>` : ''}
+            </div>
+            <div>
+              <h3 style="font-family:var(--font-display);color:var(--gold);margin-bottom:16px;">Quick Facts</h3>
+              <div class="fact-row"><span class="fact-label">Location</span><span class="fact-val">${escHtml(location)}</span></div>
+              <div class="fact-row"><span class="fact-label">Founded</span><span class="fact-val">${escHtml(m.founded)}</span></div>
+              <div class="fact-row"><span class="fact-label">Main Festival</span><span class="fact-val">${escHtml(festival)}</span></div>
+              ${m.coordinates && m.coordinates.latitude ? `<div class="fact-row"><span class="fact-label">GPS</span><span class="fact-val">${m.coordinates.latitude.toFixed(4)}°N, ${m.coordinates.longitude.toFixed(4)}°E</span></div>` : ''}
+              <div class="fact-row"><span class="fact-label">360° Tours</span><span class="fact-val" style="color:var(--gold)">${hasViews ? `✓ ${m.views.length} available` : 'Not available'}</span></div>
+              <div class="fact-row"><span class="fact-label">Audio Guide</span><span class="fact-val" style="color:var(--gold)">✓ 6 languages (TTS)</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 360° TOURS -->
+        ${hasViews ? `
+        <div id="tab-tours" class="tab-content">
+          <p style="color:var(--muted);margin-bottom:24px;">
+            Explore <strong style="color:var(--white)">${escHtml(name)}</strong> through immersive 360° Google Street View.
+            Click and drag inside the viewer to look around. Use scroll to zoom.
+          </p>
+          ${m.views.sort((a,b)=>a.order-b.order).map((v,i) => {
+            if (v.type === 'iframe') return `
+            <div class="view-item">
+              <div class="view-label">
+                <span>🌐 360° Street View ${m.views.length > 1 ? i+1 : ''}</span>
+                <a href="${escHtml(v.src)}" target="_blank" rel="noopener">Open full screen ↗</a>
+              </div>
+              <div class="panorama-frame">
+                <iframe src="${escHtml(v.src)}" allowfullscreen loading="lazy" title="360 view of ${escHtml(name)}"></iframe>
+              </div>
+            </div>`;
+            return '';
+          }).join('')}
+          <p style="color:var(--muted);font-size:0.82rem;margin-top:8px;">
+            💡 Tip: For the best experience, click "Open full screen" or visit on Google Maps Street View.
+          </p>
+        </div>` : ''}
+
+        <!-- AUDIO GUIDE -->
+        <div id="tab-audio" class="tab-content">
+          <div class="audio-guide-wrap">
+            <h3 style="font-family:var(--font-display);color:var(--white);margin-bottom:6px;">🔊 Audio Guide</h3>
+            <p style="color:var(--muted);font-size:0.88rem;margin-bottom:20px;">
+              Listen to a narrated guide about <strong style="color:var(--white)">${escHtml(name)}</strong>.
+              Powered by your browser's text-to-speech — no download needed.
+            </p>
+
+            <!-- Language selector -->
+            <div class="audio-lang-row" id="audio-lang-row">
+              <button class="audio-lang-btn active" data-lang="en" onclick="changeTTSLang('en')">🇬🇧 English</button>
+              <button class="audio-lang-btn" data-lang="hi" onclick="changeTTSLang('hi')">🇮🇳 Hindi</button>
+              <button class="audio-lang-btn" data-lang="ne" onclick="changeTTSLang('ne')">🇳🇵 Nepali</button>
+              <button class="audio-lang-btn" data-lang="bo" onclick="changeTTSLang('bo')">🏔️ Tibetan</button>
+              <button class="audio-lang-btn" data-lang="zh" onclick="changeTTSLang('zh')">🇨🇳 Mandarin</button>
+            </div>
+
+            ${ttsSupported ? `
+            <div class="tts-player">
+              <div class="tts-controls">
+                <button class="tts-btn tts-play" id="tts-play-btn" onclick="toggleTTS()" title="Play / Pause">▶</button>
+                <button class="tts-btn tts-stop" onclick="ttsStop()" title="Stop">⏹</button>
+                <div class="tts-info">
+                  <div class="tts-title">${escHtml(name)} — Audio Guide</div>
+                  <div class="tts-sublabel" id="tts-sublabel">English · Ready</div>
+                </div>
+                <div class="tts-speed">
+                  Speed
+                  <select id="tts-speed-sel" onchange="if(ttsActive){ttsStop();ttsPlay();}">
+                    <option value="0.7">Slow</option>
+                    <option value="0.9" selected>Normal</option>
+                    <option value="1.2">Fast</option>
+                  </select>
+                </div>
+              </div>
+              <div class="tts-progress"><div class="tts-progress-bar" id="tts-progress-bar"></div></div>
+            </div>
+
+            <div style="margin-bottom:12px;font-size:0.82rem;color:var(--muted);">Script preview — highlighted text is being read:</div>
+            <div class="tts-text-preview" id="tts-text">${escHtml(ttsGetText())}</div>
+            ` : `
+            <div class="no-tts-msg">
+              ⚠️ Your browser does not support Text-to-Speech. Please use a modern browser like Chrome, Edge, or Safari.
+            </div>`}
+          </div>
+        </div>
+
+        <!-- VIDEOS -->
+        ${hasVideos ? `
+        <div id="tab-videos" class="tab-content">
+          <p style="color:var(--muted);margin-bottom:24px;">Watch curated videos about <strong style="color:var(--white)">${escHtml(name)}</strong>.</p>
+          <div class="video-grid">
+            ${m.videos.map(url => {
+              const e = ytEmbed(url);
+              return e ? `<div class="video-item"><iframe src="${e}" allowfullscreen loading="lazy" title="Video about ${escHtml(name)}"></iframe></div>` : '';
+            }).join('')}
+          </div>
+        </div>` : ''}
+
+      </div>
+    </section>`;
+
+    // Wire tabs
+    document.getElementById('tabs-bar').querySelectorAll('.tab').forEach(t => {
+      t.addEventListener('click', () => { activeTab = t.dataset.tab; applyActiveTab(); });
+    });
+    applyActiveTab();
+  }
+
+  function switchTab(tab) {
+    activeTab = tab;
+    applyActiveTab();
+    const section = document.querySelector('.tabs');
+    if (section) section.scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+
+  function applyActiveTab() {
+    const bar = document.getElementById('tabs-bar');
+    if (!bar) return;
+    const valid = Array.from(bar.querySelectorAll('.tab')).map(t => t.dataset.tab);
+    if (!valid.includes(activeTab)) activeTab = 'overview';
+    bar.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === activeTab));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === `tab-${activeTab}`));
+
+    // Stop TTS when leaving audio tab
+    if (activeTab !== 'audio') ttsStop();
+  }
+
+  // Sync lang with global selector
+  document.addEventListener('langChange', (e) => {
+    if (monastery) {
+      ttsStop();
+      renderDetail(monastery);
+      // restore audio tab state if it was open
+      applyActiveTab();
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (!monasteryId) return;
+    // Restore tab from quick-action links
+    const savedTab = sessionStorage.getItem('m360_tab');
+    if (savedTab) { activeTab = savedTab; sessionStorage.removeItem('m360_tab'); }
+    try {
+      const { data } = await API.getMonastery(monasteryId);
+      monastery = data;
+      ttsLang = window.currentLang || 'en';
+      renderDetail(data);
+    } catch (err) {
+      document.getElementById('detail-root').innerHTML = `
+        <div class="empty-state" style="min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+          <div class="empty-icon">⚠️</div>
+          <h3>Monastery Not Found</h3>
+          <p style="margin-bottom:20px;">Could not load this monastery.</p>
+          <a href="monasteries.html" class="btn btn-outline btn-sm">Back to Monasteries</a>
+        </div>`;
+    }
+  });
+
+  // Stop TTS on page unload
+  window.addEventListener('beforeunload', () => { if (window.speechSynthesis) window.speechSynthesis.cancel(); });
+</script>
+</body>
+</html>

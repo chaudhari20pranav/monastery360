@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Scriptures · Monastery360</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <style>
+    .scripture-card {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--radius-lg); padding:28px;
+      transition:all var(--transition); cursor:pointer;
+      display:flex; flex-direction:column;
+    }
+    .scripture-card:hover { border-color:rgba(201,168,76,0.35); transform:translateY(-3px); box-shadow:var(--shadow-gold); }
+    .scripture-card-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; gap:12px; }
+    .scripture-card h3 { font-family:var(--font-display); font-size:1.1rem; color:var(--white); }
+    .scripture-icon { font-size:2rem; flex-shrink:0; }
+    .scripture-meta { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+    .scripture-desc { font-size:0.88rem; color:var(--muted); line-height:1.65; margin-bottom:0; flex:1; }
+    .scripture-detail { display:none; margin-top:16px; padding-top:16px; border-top:1px solid var(--border); }
+    .scripture-detail.open { display:block; animation:fadeIn 0.3s ease; }
+    .scripture-significance { background:var(--bg3); border-left:3px solid var(--gold); border-radius:0 8px 8px 0; padding:14px 16px; margin:0 0 14px; font-size:0.88rem; color:var(--muted); line-height:1.7; }
+    .scripture-toggle { font-size:0.78rem; color:var(--gold); margin-top:14px; text-align:right; }
+    .results-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:8px; }
+    .results-count { color:var(--muted); font-size:0.88rem; }
+    .type-filter-bar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:28px; }
+    .type-chip { padding:6px 14px; border-radius:999px; font-size:0.82rem; background:var(--surface); border:1px solid var(--border); color:var(--muted); cursor:pointer; transition:all var(--transition); }
+    .type-chip:hover { border-color:var(--gold); color:var(--gold); }
+    .type-chip.active { background:var(--gold); color:#0d0d0f; border-color:var(--gold); }
+  </style>
+</head>
+<body>
+<div id="navbar-placeholder"></div>
+
+<div class="page-header">
+  <div class="container">
+    <h1 class="section-title">Sacred Scriptures</h1>
+    <p>Explore the foundational Buddhist texts and literary traditions preserved in Sikkim's monastery culture.</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container">
+
+    <div class="search-bar" style="max-width:500px; margin-bottom:24px;">
+      <input id="search-input" type="text" placeholder="Search scriptures by title, type, or origin…" autocomplete="off"/>
+      <button onclick="doSearch()">Search</button>
+    </div>
+
+    <div class="type-filter-bar" id="type-filter-bar">
+      <div class="type-chip active" data-type="all">All Types</div>
+    </div>
+
+    <div class="results-bar">
+      <div class="results-count" id="results-count"></div>
+      <button class="btn btn-outline btn-sm" onclick="clearSearch()" id="clear-btn" style="display:none;">Clear search</button>
+    </div>
+
+    <div class="grid-3 stagger" id="scriptures-grid">
+      <div class="loading-spinner" style="grid-column:1/-1;">
+        <div class="spinner"></div><span>Loading scriptures…</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="footer-placeholder"></div>
+
+<script src="js/api.js"></script>
+<script src="js/components.js"></script>
+<script src="js/main.js"></script>
+<script>
+  const TYPE_ICONS = {
+    'Canon': '📜', 'Commentary': '📝', 'Tantric Text': '🔮',
+    'Epic Poem': '📚', 'Liturgical Text': '🙏', 'Sutra': '☸️',
+    'Devotional Poetry': '✍️', 'Ritual Text': '🕯️', 'Historical Text': '🏛️',
+  };
+
+  let allScriptures   = [];
+  let expandedId      = null;
+  let activeType      = 'all';
+  let searchQuery     = '';
+
+  function escHtml(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function icon(type) { return TYPE_ICONS[type] || '📖'; }
+
+  function renderCard(s) {
+    const isOpen = expandedId === s._id;
+    return `
+    <div class="scripture-card" onclick="toggleCard('${s._id}')">
+      <div class="scripture-card-top">
+        <h3>${escHtml(s.title)}</h3>
+        <div class="scripture-icon">${icon(s.type)}</div>
+      </div>
+      <div class="scripture-meta">
+        <span class="badge badge-gold">${escHtml(s.type)}</span>
+        ${s.origin ? `<span class="badge badge-blue">${escHtml(s.origin)}</span>` : ''}
+      </div>
+      <p class="scripture-desc">${escHtml(s.description || '')}</p>
+      <div class="scripture-detail ${isOpen ? 'open' : ''}">
+        ${s.significance ? `<div class="scripture-significance"><strong style="color:var(--gold);">Significance:</strong><br/>${escHtml(s.significance)}</div>` : ''}
+        ${s.source ? `<p style="font-size:0.78rem;color:var(--muted);margin-bottom:12px;">Source: ${escHtml(s.source)}</p>` : ''}
+        ${s.src ? `<a href="${escHtml(s.src)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" onclick="event.stopPropagation()">Learn More ↗</a>` : ''}
+      </div>
+      <div class="scripture-toggle">${isOpen ? '▲ Collapse' : '▼ Read more'}</div>
+    </div>`;
+  }
+
+  function toggleCard(id) {
+    expandedId = expandedId === id ? null : id;
+    renderFiltered();
+  }
+
+  function getFiltered() {
+    let list = allScriptures;
+    if (activeType !== 'all') list = list.filter(s => s.type === activeType);
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(s =>
+        (s.title        || '').toLowerCase().includes(q) ||
+        (s.type         || '').toLowerCase().includes(q) ||
+        (s.description  || '').toLowerCase().includes(q) ||
+        (s.origin       || '').toLowerCase().includes(q) ||
+        (s.significance || '').toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }
+
+  function renderFiltered() {
+    const scriptures = getFiltered();
+    const grid  = document.getElementById('scriptures-grid');
+    const count = document.getElementById('results-count');
+    count.textContent = `${scriptures.length} scripture${scriptures.length !== 1 ? 's' : ''} found`;
+
+    const clearBtn = document.getElementById('clear-btn');
+    clearBtn.style.display = (searchQuery || activeType !== 'all') ? '' : 'none';
+
+    if (!scriptures.length) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
+        <div class="empty-icon">📖</div><h3>No scriptures found</h3>
+        <p>Try a different search or filter.</p>
+      </div>`;
+      return;
+    }
+    grid.innerHTML = scriptures.map(renderCard).join('');
+  }
+
+  function buildTypeFilters() {
+    const types = [...new Set(allScriptures.map(s => s.type).filter(Boolean))];
+    const bar = document.getElementById('type-filter-bar');
+    bar.innerHTML = '<div class="type-chip active" data-type="all">All Types</div>';
+    types.forEach(t => {
+      const chip = document.createElement('div');
+      chip.className = 'type-chip';
+      chip.dataset.type = t;
+      chip.textContent = `${icon(t)} ${t}`;
+      bar.appendChild(chip);
+    });
+    bar.querySelectorAll('.type-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        bar.querySelectorAll('.type-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        activeType = chip.dataset.type;
+        renderFiltered();
+      });
+    });
+  }
+
+  async function doSearch() {
+    const q = document.getElementById('search-input').value.trim();
+    searchQuery = q;
+    renderFiltered();
+  }
+
+  function clearSearch() {
+    searchQuery = '';
+    activeType = 'all';
+    document.getElementById('search-input').value = '';
+    document.querySelectorAll('.type-chip').forEach(c => c.classList.toggle('active', c.dataset.type === 'all'));
+    renderFiltered();
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    document.getElementById('search-input').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+    try {
+      const { data } = await API.getScriptures();
+      allScriptures = data || [];
+      buildTypeFilters();
+      renderFiltered();
+    } catch {
+      document.getElementById('scriptures-grid').innerHTML = `
+        <div class="empty-state" style="grid-column:1/-1;">
+          <div class="empty-icon">⚠️</div><h3>Could not load scriptures</h3>
+          <p>Make sure the backend server is running: <code>cd backend && npm start</code></p>
+        </div>`;
+    }
+  });
+</script>
+</body>
+</html>

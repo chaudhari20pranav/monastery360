@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Monasteries · Monastery360</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <style>
+    .filter-bar { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:32px; }
+    .filter-chip { padding:7px 16px; border-radius:999px; font-size:0.85rem; background:var(--surface); border:1px solid var(--border); color:var(--muted); cursor:pointer; transition:all var(--transition); user-select:none; }
+    .filter-chip:hover { border-color:var(--gold); color:var(--gold); }
+    .filter-chip.active { background:var(--gold); color:#0d0d0f; border-color:var(--gold); }
+
+    .mon-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; transition:all var(--transition); display:flex; flex-direction:column; }
+    .mon-card:hover { transform:translateY(-5px); border-color:rgba(201,168,76,0.35); box-shadow:var(--shadow-gold); }
+    .mon-card-img { position:relative; overflow:hidden; }
+    .mon-card-img img { width:100%; height:220px; object-fit:cover; transition:transform 0.5s ease; display:block; }
+    .mon-card:hover .mon-card-img img { transform:scale(1.05); }
+    .tour-badge { position:absolute; top:12px; right:12px; background:rgba(0,0,0,0.72); color:var(--gold); font-size:0.75rem; padding:4px 10px; border-radius:999px; border:1px solid rgba(201,168,76,0.4); }
+    .mon-card-body { padding:20px; flex:1; display:flex; flex-direction:column; }
+    .mon-card-body h3 { font-family:var(--font-display); font-size:1.15rem; color:var(--white); margin-bottom:4px; }
+    .mon-card-loc { font-size:0.82rem; color:var(--gold); margin-bottom:6px; }
+    .mon-card-meta { display:flex; gap:16px; margin-bottom:10px; flex-wrap:wrap; }
+    .mon-card-meta span { font-size:0.78rem; color:var(--muted); }
+    .mon-card-desc { font-size:0.88rem; color:var(--muted); line-height:1.6; flex:1; margin-bottom:16px; }
+    .mon-card-actions { display:flex; gap:6px; flex-wrap:wrap; margin-top:auto; }
+
+    .results-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:8px; }
+    .results-header span { color:var(--muted); font-size:0.88rem; }
+  </style>
+</head>
+<body>
+<div id="navbar-placeholder"></div>
+
+<div class="page-header">
+  <div class="container">
+    <h1 class="section-title">Sacred Monasteries</h1>
+    <p>Explore six remarkable monasteries across Sikkim — each a living treasure of Buddhist art, history, and spiritual practice.</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container">
+
+    <div class="search-bar" style="margin-bottom:24px;">
+      <input id="search-input" type="text" placeholder="Search by name, location, or festival…" autocomplete="off"/>
+      <button onclick="doSearch()">Search</button>
+    </div>
+
+    <div class="filter-bar" id="filter-bar">
+      <div class="filter-chip active" data-filter="all">All Regions</div>
+      <div class="filter-chip" data-filter="East Sikkim">East Sikkim</div>
+      <div class="filter-chip" data-filter="West Sikkim">West Sikkim</div>
+      <div class="filter-chip" data-filter="North Sikkim">North Sikkim</div>
+      <div class="filter-chip" data-filter="Gangtok">Gangtok</div>
+    </div>
+
+    <div class="results-header">
+      <span id="results-count"></span>
+      <a href="map.html" class="btn btn-outline btn-sm">🗺️ View on Map</a>
+    </div>
+
+    <div class="grid-3 stagger" id="monasteries-grid">
+      <div class="loading-spinner" style="grid-column:1/-1;">
+        <div class="spinner"></div><span>Loading monasteries…</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="footer-placeholder"></div>
+
+<script src="js/api.js"></script>
+<script src="js/components.js"></script>
+<script src="js/main.js"></script>
+<script>
+  let allMonasteries = [];
+  let activeFilter   = 'all';
+  let searchQuery    = '';
+
+  function escHtml(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function imgUrl(m) {
+    return `assets/images/${escHtml(m.image)}`;
+  }
+  function imgFallback(m) {
+    return `https://placehold.co/400x280/1e1e2e/c9a84c?text=${encodeURIComponent(m.name)}`;
+  }
+
+  function renderCard(m) {
+    const name     = getTranslation(m, 'name');
+    const location = getTranslation(m, 'location');
+    const desc     = getTranslation(m, 'description');
+    const festival = getTranslation(m, 'festival');
+    const shortDesc = desc.length > 150 ? desc.substring(0, 150) + '…' : desc;
+    const has360   = m.views && m.views.length > 0;
+
+    return `
+    <div class="mon-card fade-in">
+      <div class="mon-card-img">
+        <img src="${imgUrl(m)}" alt="${escHtml(name)}" loading="lazy"
+             onerror="this.src='${imgFallback(m)}'"/>
+        ${has360 ? '<span class="tour-badge">🌐 360° Tour</span>' : ''}
+      </div>
+      <div class="mon-card-body">
+        <h3>${escHtml(name)}</h3>
+        <div class="mon-card-loc">📍 ${escHtml(location)}</div>
+        <div class="mon-card-meta">
+          <span>🏛️ Founded ${escHtml(m.founded)}</span>
+          <span>🎉 ${escHtml(festival)}</span>
+        </div>
+        <p class="mon-card-desc">${escHtml(shortDesc)}</p>
+        <div class="mon-card-actions">
+          <a href="monastery-detail.html?id=${escHtml(m._id)}" class="btn btn-primary btn-sm">Explore</a>
+          ${has360 ? `<a href="monastery-detail.html?id=${escHtml(m._id)}" class="btn btn-outline btn-sm" onclick="sessionStorage.setItem('m360_tab','tours')">🌐 360°</a>` : ''}
+          <a href="monastery-detail.html?id=${escHtml(m._id)}" class="btn btn-outline btn-sm" onclick="sessionStorage.setItem('m360_tab','audio')">🔊 Audio</a>
+          <a href="map.html" class="btn btn-outline btn-sm">🗺️ Map</a>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function getFilteredList() {
+    let list = allMonasteries;
+    if (activeFilter !== 'all') {
+      list = list.filter(m => m.location && m.location.includes(activeFilter));
+    }
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(m =>
+        m.name.toLowerCase().includes(q) ||
+        m.location.toLowerCase().includes(q) ||
+        (m.festival || '').toLowerCase().includes(q) ||
+        (m.description || '').toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }
+
+  function renderGrid(list) {
+    const grid  = document.getElementById('monasteries-grid');
+    const count = document.getElementById('results-count');
+    count.textContent = list.length ? `${list.length} monastery${list.length !== 1 ? 'ies' : 'y'} found` : '';
+
+    if (!list || !list.length) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
+        <div class="empty-icon">🔍</div><h3>No monasteries found</h3>
+        <p>Try a different search or filter.</p>
+        <button class="btn btn-outline btn-sm" onclick="clearSearch()" style="margin-top:12px;">Clear filter</button>
+      </div>`;
+      return;
+    }
+    grid.innerHTML = list.map(renderCard).join('');
+  }
+
+  function clearSearch() {
+    searchQuery = '';
+    activeFilter = 'all';
+    document.getElementById('search-input').value = '';
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.toggle('active', c.dataset.filter === 'all'));
+    renderGrid(getFilteredList());
+  }
+
+  function doSearch() {
+    searchQuery = document.getElementById('search-input').value.trim();
+    renderGrid(getFilteredList());
+  }
+
+  async function loadMonasteries() {
+    try {
+      const { data } = await API.getMonasteries();
+      allMonasteries = data || [];
+      renderGrid(allMonasteries);
+    } catch (err) {
+      document.getElementById('monasteries-grid').innerHTML = `
+        <div class="empty-state" style="grid-column:1/-1;">
+          <div class="empty-icon">⚠️</div><h3>Connection Error</h3>
+          <p>Make sure the backend is running: <code>cd backend && npm start</code></p>
+        </div>`;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('search-input').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+    document.getElementById('filter-bar').querySelectorAll('.filter-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        activeFilter = chip.dataset.filter;
+        searchQuery  = '';
+        document.getElementById('search-input').value = '';
+        renderGrid(getFilteredList());
+      });
+    });
+
+    loadMonasteries();
+  });
+
+  document.addEventListener('langChange', () => {
+    if (allMonasteries.length) renderGrid(getFilteredList());
+  });
+</script>
+</body>
+</html>

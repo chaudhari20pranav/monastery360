@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Book a Visit · Monastery360</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <style>
+    .booking-layout {
+      display:grid; grid-template-columns:1fr 400px;
+      gap:48px; align-items:start;
+    }
+    .booking-form-wrap {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--radius-lg); padding:36px;
+    }
+    .booking-form-wrap h2 { font-family:var(--font-display); font-size:1.5rem; color:var(--white); margin-bottom:6px; }
+    .booking-form-wrap .subtitle { color:var(--muted); font-size:0.9rem; margin-bottom:28px; }
+
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+
+    .booking-sidebar { display:flex; flex-direction:column; gap:20px; }
+    .info-card {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--radius-lg); padding:24px;
+    }
+    .info-card h3 { font-family:var(--font-display); font-size:1rem; color:var(--gold); margin-bottom:14px; }
+    .info-list { list-style:none; display:flex; flex-direction:column; gap:10px; }
+    .info-list li { display:flex; gap:10px; font-size:0.88rem; color:var(--muted); align-items:flex-start; }
+    .info-list li .icon { flex-shrink:0; font-size:1rem; margin-top:1px; }
+
+    .monastery-select-preview {
+      display:none; background:var(--bg3); border:1px solid var(--border);
+      border-radius:10px; padding:14px; margin-bottom:16px;
+    }
+    .monastery-select-preview img {
+      width:100%; height:140px; object-fit:cover;
+      border-radius:8px; margin-bottom:10px; display:block;
+    }
+    .monastery-select-preview h4 { font-family:var(--font-display); font-size:0.95rem; color:var(--white); margin-bottom:4px; }
+    .monastery-select-preview span { font-size:0.8rem; color:var(--gold); }
+
+    .success-msg { display:none; text-align:center; padding:40px 20px; }
+    .success-msg .success-icon { font-size:3rem; margin-bottom:16px; }
+    .success-msg h3 { font-family:var(--font-display); font-size:1.4rem; color:var(--gold); margin-bottom:10px; }
+    .success-msg p  { color:var(--muted); margin-bottom:20px; }
+
+    .field-error { color:#e74c3c; font-size:0.78rem; margin-top:4px; display:none; }
+    .form-group.has-error input,
+    .form-group.has-error select,
+    .form-group.has-error textarea { border-color:#e74c3c; }
+
+    @media(max-width:900px) { .booking-layout { grid-template-columns:1fr; } .booking-sidebar { order:-1; } }
+    @media(max-width:600px) { .form-row { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+<div id="navbar-placeholder"></div>
+
+<div class="page-header">
+  <div class="container">
+    <h1 class="section-title">Book Your Visit</h1>
+    <p>Plan your monastery journey in Sikkim. We'll help coordinate your spiritual travel experience.</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container">
+    <div class="booking-layout">
+
+      <!-- Form -->
+      <div class="booking-form-wrap">
+        <h2>Visitor Information</h2>
+        <p class="subtitle">Fill in your details and we'll confirm your booking by email.</p>
+
+        <div id="success-msg" class="success-msg">
+          <div class="success-icon">✅</div>
+          <h3>Booking Confirmed!</h3>
+          <p>Your visit request has been submitted successfully. We'll get in touch with you soon.</p>
+          <button class="btn btn-primary" onclick="resetForm()">Make Another Booking</button>
+        </div>
+
+        <div id="booking-form-inner">
+          <div id="monastery-preview" class="monastery-select-preview" aria-live="polite">
+            <img id="preview-img" src="" alt="Selected monastery"/>
+            <h4 id="preview-name"></h4>
+            <span id="preview-loc"></span>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group" id="fg-name">
+              <label for="name">Full Name *</label>
+              <input id="name" type="text" placeholder="Your full name" autocomplete="name"/>
+              <div class="field-error" id="err-name">Please enter your full name.</div>
+            </div>
+            <div class="form-group" id="fg-email">
+              <label for="email">Email *</label>
+              <input id="email" type="email" placeholder="you@email.com" autocomplete="email"/>
+              <div class="field-error" id="err-email">Please enter a valid email address.</div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" id="fg-phone">
+              <label for="phone">Phone *</label>
+              <input id="phone" type="tel" placeholder="+91 00000 00000" autocomplete="tel"/>
+              <div class="field-error" id="err-phone">Please enter your phone number.</div>
+            </div>
+            <div class="form-group" id="fg-travelers">
+              <label for="travelers">Number of Travelers *</label>
+              <input id="travelers" type="number" min="1" max="50" placeholder="1"/>
+              <div class="field-error" id="err-travelers">Please enter number of travelers (1–50).</div>
+            </div>
+          </div>
+          <div class="form-group" id="fg-monastery">
+            <label for="monastery">Select Monastery *</label>
+            <select id="monastery" onchange="updatePreview()">
+              <option value="">— Choose a monastery —</option>
+            </select>
+            <div class="field-error" id="err-monastery">Please select a monastery.</div>
+          </div>
+          <div class="form-group" id="fg-date">
+            <label for="travel-date">Travel Date *</label>
+            <input id="travel-date" type="date"/>
+            <div class="field-error" id="err-date">Please select a future travel date.</div>
+          </div>
+          <div class="form-group">
+            <label for="message">Special Requests / Message</label>
+            <textarea id="message" placeholder="Any special requirements, accessibility needs, or questions…"></textarea>
+          </div>
+
+          <button class="btn btn-primary btn-full" onclick="submitBooking()" id="submit-btn">
+            Confirm Booking
+          </button>
+          <p style="color:var(--muted);font-size:0.8rem;margin-top:12px;text-align:center;">
+            * Required fields. Your information is kept private.
+          </p>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="booking-sidebar">
+        <div class="info-card">
+          <h3>What to Expect</h3>
+          <ul class="info-list">
+            <li><span class="icon">✉️</span><span>Confirmation email within 24 hours of booking</span></li>
+            <li><span class="icon">📋</span><span>Detailed itinerary with opening hours and entry fees</span></li>
+            <li><span class="icon">🎧</span><span>Audio guide access for your chosen monastery</span></li>
+            <li><span class="icon">🏔️</span><span>Tips for altitude, weather, and local customs</span></li>
+          </ul>
+        </div>
+        <div class="info-card">
+          <h3>Visiting Guidelines</h3>
+          <ul class="info-list">
+            <li><span class="icon">👗</span><span>Dress modestly — cover shoulders and knees</span></li>
+            <li><span class="icon">🔕</span><span>Maintain silence in prayer halls</span></li>
+            <li><span class="icon">📸</span><span>Ask before photographing monks or rituals</span></li>
+            <li><span class="icon">🕯️</span><span>Walk clockwise around prayer wheels and stupas</span></li>
+            <li><span class="icon">🚫</span><span>Do not touch statues or sacred objects</span></li>
+          </ul>
+        </div>
+        <div class="info-card">
+          <h3>Best Times to Visit</h3>
+          <ul class="info-list">
+            <li><span class="icon">🌸</span><span><strong style="color:var(--white)">March–May</strong> — Spring bloom, mild weather</span></li>
+            <li><span class="icon">🍂</span><span><strong style="color:var(--white)">Oct–Dec</strong> — Clear skies, mountain views</span></li>
+            <li><span class="icon">🎭</span><span>Festival season (Losar, Bumchu, Chaam) for special experiences</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="footer-placeholder"></div>
+
+<script src="js/api.js"></script>
+<script src="js/components.js"></script>
+<script src="js/main.js"></script>
+<script>
+  let monasteries = [];
+
+  async function loadMonasteries() {
+    try {
+      const { data } = await API.getMonasteries();
+      monasteries = data || [];
+      const sel = document.getElementById('monastery');
+      monasteries.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m._id;
+        opt.textContent = `${m.name} — ${m.location}`;
+        sel.appendChild(opt);
+      });
+      // Pre-select from URL param
+      const params = new URLSearchParams(window.location.search);
+      const pre = params.get('monastery');
+      if (pre) {
+        sel.value = pre;
+        updatePreview();
+      }
+    } catch (e) {
+      console.error('Failed to load monasteries:', e);
+      showToast('Could not load monasteries. Is the backend running?', 'error');
+    }
+  }
+
+  function updatePreview() {
+    const id = document.getElementById('monastery').value;
+    const m  = monasteries.find(x => x._id === id);
+    const preview = document.getElementById('monastery-preview');
+    if (!m) { preview.style.display = 'none'; return; }
+
+    const img = document.getElementById('preview-img');
+    img.src = `assets/images/${m.image}`;
+    img.onerror = () => {
+      img.src = `https://placehold.co/400x140/1e1e2e/c9a84c?text=${encodeURIComponent(m.name)}`;
+    };
+    document.getElementById('preview-name').textContent = m.name;
+    document.getElementById('preview-loc').textContent  = `📍 ${m.location}`;
+    preview.style.display = 'block';
+
+    // Clear monastery field error when selected
+    clearFieldError('fg-monastery', 'err-monastery');
+  }
+
+  // ── Validation helpers ────────────────────────────────────────────────────
+  function showFieldError(groupId, errId) {
+    document.getElementById(groupId).classList.add('has-error');
+    document.getElementById(errId).style.display = 'block';
+  }
+  function clearFieldError(groupId, errId) {
+    document.getElementById(groupId).classList.remove('has-error');
+    document.getElementById(errId).style.display = 'none';
+  }
+  function clearAllErrors() {
+    [['fg-name','err-name'],['fg-email','err-email'],['fg-phone','err-phone'],
+     ['fg-travelers','err-travelers'],['fg-monastery','err-monastery'],['fg-date','err-date']
+    ].forEach(([g,e]) => clearFieldError(g, e));
+  }
+
+  function validateForm() {
+    clearAllErrors();
+    let valid = true;
+
+    const name      = document.getElementById('name').value.trim();
+    const email     = document.getElementById('email').value.trim();
+    const phone     = document.getElementById('phone').value.trim();
+    const monastery = document.getElementById('monastery').value;
+    const date      = document.getElementById('travel-date').value;
+    const travelers = parseInt(document.getElementById('travelers').value, 10);
+
+    if (!name) { showFieldError('fg-name','err-name'); valid = false; }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showFieldError('fg-email','err-email'); valid = false; }
+    if (!phone || phone.replace(/\D/g,'').length < 7) { showFieldError('fg-phone','err-phone'); valid = false; }
+    if (!monastery) { showFieldError('fg-monastery','err-monastery'); valid = false; }
+    if (!date || new Date(date) < new Date(new Date().toDateString())) { showFieldError('fg-date','err-date'); valid = false; }
+    if (!travelers || travelers < 1 || travelers > 50) { showFieldError('fg-travelers','err-travelers'); valid = false; }
+
+    return valid;
+  }
+
+  async function submitBooking() {
+    if (!validateForm()) return;
+
+    const name       = document.getElementById('name').value.trim();
+    const email      = document.getElementById('email').value.trim();
+    const phone      = document.getElementById('phone').value.trim();
+    const monastery  = document.getElementById('monastery').value;
+    const travelDate = document.getElementById('travel-date').value;
+    const travelers  = parseInt(document.getElementById('travelers').value, 10);
+    const message    = document.getElementById('message').value.trim();
+
+    const btn = document.getElementById('submit-btn');
+    btn.textContent = 'Submitting…';
+    btn.disabled    = true;
+
+    try {
+      await API.createBooking({
+        name, email, phone, monastery,
+        travelDate,
+        numberOfTravelers: travelers,
+        message,
+      });
+      document.getElementById('booking-form-inner').style.display = 'none';
+      document.getElementById('success-msg').style.display = 'block';
+      showToast('Booking submitted successfully!', 'success');
+    } catch (e) {
+      showToast(e.message || 'Booking failed. Please try again.', 'error');
+      btn.textContent = 'Confirm Booking';
+      btn.disabled    = false;
+    }
+  }
+
+  function resetForm() {
+    document.getElementById('booking-form-inner').style.display = 'block';
+    document.getElementById('success-msg').style.display = 'none';
+    ['name','email','phone','travelers','message'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('monastery').value = '';
+    document.getElementById('travel-date').value = '';
+    document.getElementById('monastery-preview').style.display = 'none';
+    document.getElementById('submit-btn').textContent = 'Confirm Booking';
+    document.getElementById('submit-btn').disabled = false;
+    clearAllErrors();
+  }
+
+  // Inline validation on blur
+  document.addEventListener('DOMContentLoaded', () => {
+    // Set min date to today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('travel-date').min = today;
+
+    // Inline clear on input
+    document.getElementById('name').addEventListener('input', () => clearFieldError('fg-name','err-name'));
+    document.getElementById('email').addEventListener('input', () => clearFieldError('fg-email','err-email'));
+    document.getElementById('phone').addEventListener('input', () => clearFieldError('fg-phone','err-phone'));
+    document.getElementById('travelers').addEventListener('input', () => clearFieldError('fg-travelers','err-travelers'));
+    document.getElementById('travel-date').addEventListener('change', () => clearFieldError('fg-date','err-date'));
+
+    loadMonasteries();
+  });
+</script>
+</body>
+</html>

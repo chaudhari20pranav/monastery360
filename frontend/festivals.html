@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Festivals · Monastery360</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <style>
+    .calendar-header { display:flex; align-items:center; gap:16px; justify-content:center; margin-bottom:32px; flex-wrap:wrap; }
+    .year-nav { display:flex; align-items:center; gap:12px; }
+    .year-nav button { background:var(--surface); border:1px solid var(--border); color:var(--white); width:36px; height:36px; border-radius:8px; font-size:1.1rem; transition:all var(--transition); cursor:pointer; }
+    .year-nav button:hover { border-color:var(--gold); color:var(--gold); }
+    .year-display { font-family:var(--font-display); font-size:1.6rem; color:var(--white); min-width:80px; text-align:center; }
+
+    .month-tabs { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin-bottom:32px; }
+    .month-tab { padding:6px 14px; border-radius:999px; font-size:0.82rem; background:var(--surface); border:1px solid var(--border); color:var(--muted); cursor:pointer; transition:all var(--transition); user-select:none; }
+    .month-tab:hover { border-color:var(--gold); color:var(--gold); }
+    .month-tab.active { background:var(--gold); color:#0d0d0f; border-color:var(--gold); }
+
+    .festivals-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:24px; }
+    .festival-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:24px; transition:all var(--transition); }
+    .festival-card:hover { border-color:rgba(201,168,76,0.35); transform:translateY(-3px); box-shadow:var(--shadow-gold); }
+    .festival-card-header { display:flex; gap:16px; align-items:flex-start; margin-bottom:14px; }
+    .festival-date-box { min-width:60px; text-align:center; background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:8px 6px; flex-shrink:0; }
+    .festival-month-label { font-size:0.65rem; color:var(--gold); text-transform:uppercase; letter-spacing:0.1em; }
+    .festival-day-num { font-family:var(--font-display); font-size:1.6rem; color:var(--white); line-height:1.1; }
+    .festival-card h3 { font-family:var(--font-display); font-size:1.05rem; color:var(--white); margin-bottom:4px; }
+    .festival-card-time { font-size:0.8rem; color:var(--gold); margin-bottom:4px; }
+    .festival-card p { font-size:0.87rem; color:var(--muted); line-height:1.65; margin-bottom:10px; }
+    .festival-card-footer { display:flex; align-items:center; gap:6px; font-size:0.8rem; color:var(--muted); padding-top:12px; border-top:1px solid var(--border); flex-wrap:wrap; }
+    .festival-card-footer .badge { margin-left:auto; }
+    .festival-monastery-link { font-size:0.78rem; color:var(--gold); margin-top:6px; display:block; }
+
+    .summary-strip { display:flex; gap:20px; flex-wrap:wrap; justify-content:center; margin-bottom:40px; }
+    .summary-item { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 24px; text-align:center; min-width:100px; }
+    .summary-num { font-family:var(--font-display); font-size:1.8rem; color:var(--gold); }
+    .summary-label { font-size:0.78rem; color:var(--muted); margin-top:2px; }
+  </style>
+</head>
+<body>
+<div id="navbar-placeholder"></div>
+
+<div class="page-header">
+  <div class="container">
+    <h1 class="section-title">Festival Calendar</h1>
+    <p>Sacred celebrations, masked dances, and spiritual gatherings across Sikkim's monasteries throughout the year.</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container">
+
+    <!-- Year nav -->
+    <div class="calendar-header">
+      <div class="year-nav">
+        <button onclick="changeYear(-1)" aria-label="Previous year">‹</button>
+        <div class="year-display" id="year-display">2026</div>
+        <button onclick="changeYear(1)" aria-label="Next year">›</button>
+      </div>
+    </div>
+
+    <!-- Summary strip -->
+    <div class="summary-strip" id="summary-strip" style="display:none;">
+      <div class="summary-item"><div class="summary-num" id="sum-total">0</div><div class="summary-label">Festivals</div></div>
+      <div class="summary-item"><div class="summary-num" id="sum-upcoming">0</div><div class="summary-label">Upcoming</div></div>
+      <div class="summary-item"><div class="summary-num" id="sum-past">0</div><div class="summary-label">Past</div></div>
+    </div>
+
+    <!-- Month tabs -->
+    <div class="month-tabs" id="month-tabs"></div>
+
+    <!-- Grid -->
+    <div class="festivals-grid stagger" id="festivals-grid">
+      <div class="loading-spinner" style="grid-column:1/-1;">
+        <div class="spinner"></div><span>Loading festivals…</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="footer-placeholder"></div>
+
+<script src="js/api.js"></script>
+<script src="js/components.js"></script>
+<script src="js/main.js"></script>
+<script>
+  let currentYear  = new Date().getFullYear();
+  let currentMonth = 'all';
+  let allFestivals = [];
+
+  function escHtml(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function buildMonthTabs() {
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const container = document.getElementById('month-tabs');
+    container.innerHTML = '';
+
+    const allTab = document.createElement('div');
+    allTab.className = 'month-tab active';
+    allTab.dataset.month = 'all';
+    allTab.textContent = 'All Months';
+    container.appendChild(allTab);
+
+    MONTHS.forEach((m, i) => {
+      const tab = document.createElement('div');
+      tab.className = 'month-tab';
+      tab.dataset.month = String(i + 1);
+      tab.textContent = m;
+      container.appendChild(tab);
+    });
+
+    container.querySelectorAll('.month-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        container.querySelectorAll('.month-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentMonth = tab.dataset.month;
+        filterAndRender();
+      });
+    });
+  }
+
+  function changeYear(d) {
+    currentYear += d;
+    document.getElementById('year-display').textContent = currentYear;
+    loadFestivals();
+  }
+
+  function renderCard(f) {
+    const d = new Date(f.date);
+    const now = new Date();
+    const isUpcoming = d >= now;
+    const locationStr = f.location || (f.monastery && f.monastery.name ? f.monastery.name : 'Sikkim');
+    const monasteryId = f.monastery && f.monastery._id ? f.monastery._id : null;
+
+    return `
+    <div class="festival-card fade-in">
+      <div class="festival-card-header">
+        <div class="festival-date-box">
+          <div class="festival-month-label">${d.toLocaleString('en', { month: 'short' })}</div>
+          <div class="festival-day-num">${d.getDate()}</div>
+          <div style="font-size:0.65rem;color:var(--muted);margin-top:2px;">${d.getFullYear()}</div>
+        </div>
+        <div style="flex:1;">
+          <h3>${escHtml(f.name)}</h3>
+          <div class="festival-card-time">⏰ ${escHtml(f.time || 'All Day')}</div>
+        </div>
+      </div>
+      <p>${escHtml(f.description)}</p>
+      <div class="festival-card-footer">
+        <span>📍 ${escHtml(locationStr)}</span>
+        <span class="badge ${isUpcoming ? 'badge-gold' : 'badge-red'}">${isUpcoming ? 'Upcoming' : 'Past'}</span>
+      </div>
+      ${monasteryId ? `<a class="festival-monastery-link" href="monastery-detail.html?id=${escHtml(monasteryId)}">Visit monastery →</a>` : ''}
+    </div>`;
+  }
+
+  function filterAndRender() {
+    const filtered = currentMonth === 'all'
+      ? allFestivals
+      : allFestivals.filter(f => new Date(f.date).getMonth() + 1 === parseInt(currentMonth, 10));
+
+    const now = new Date();
+    const upcoming = filtered.filter(f => new Date(f.date) >= now).length;
+    const past = filtered.length - upcoming;
+
+    const strip = document.getElementById('summary-strip');
+    if (allFestivals.length) {
+      strip.style.display = 'flex';
+      document.getElementById('sum-total').textContent    = filtered.length;
+      document.getElementById('sum-upcoming').textContent = upcoming;
+      document.getElementById('sum-past').textContent     = past;
+    }
+
+    const grid = document.getElementById('festivals-grid');
+    if (!filtered.length) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
+        <div class="empty-icon">🎭</div>
+        <h3>No festivals found</h3>
+        <p>No festivals for this period. Try a different month or year.</p>
+      </div>`;
+      return;
+    }
+    grid.innerHTML = filtered.map(renderCard).join('');
+  }
+
+  async function loadFestivals() {
+    document.getElementById('festivals-grid').innerHTML =
+      '<div class="loading-spinner" style="grid-column:1/-1;"><div class="spinner"></div><span>Loading…</span></div>';
+    document.getElementById('summary-strip').style.display = 'none';
+
+    try {
+      const { data } = await API.getFestivalsByYear(currentYear);
+      allFestivals = (data || []).sort((a, b) => new Date(a.date) - new Date(b.date));
+      filterAndRender();
+    } catch (err) {
+      console.error(err);
+      document.getElementById('festivals-grid').innerHTML =
+        `<div class="empty-state" style="grid-column:1/-1;">
+          <div class="empty-icon">⚠️</div>
+          <h3>Could not load festivals</h3>
+          <p>Make sure the backend server is running: <code>cd backend && npm start</code></p>
+        </div>`;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    buildMonthTabs();
+    document.getElementById('year-display').textContent = currentYear;
+    loadFestivals();
+  });
+</script>
+</body>
+</html>

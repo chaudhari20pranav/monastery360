@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Map · Monastery360</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <!-- Leaflet CSS must be in <head> -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+  <!-- Leaflet JS loaded early so it is available before our scripts -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <style>
+    /* ── layout ─────────────────────────────────────────────────────────────── */
+    html, body { height: 100%; margin: 0; padding: 0; }
+
+    .map-page-wrap {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    /* push content below fixed navbar */
+    .map-body {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      min-height: 0;          /* critical — lets children shrink below content size */
+      margin-top: var(--nav-h);
+    }
+
+    /* ── sidebar ─────────────────────────────────────────────────────────────── */
+    .map-sidebar {
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;       /* children scroll, not the sidebar itself */
+    }
+
+    .map-sidebar-header {
+      padding: 18px 16px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg3);
+      flex-shrink: 0;
+    }
+    .map-sidebar-header h2 {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      color: var(--gold);
+      margin-bottom: 10px;
+    }
+    .map-search {
+      display: flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .map-search input {
+      flex: 1; background: transparent; border: none;
+      color: var(--white); padding: 8px 12px; font-size: 0.84rem; outline: none;
+    }
+    .map-search input::placeholder { color: var(--muted); }
+    .map-search button {
+      background: var(--gold); color: #0d0d0f;
+      border: none; padding: 8px 12px; font-size: 0.85rem; cursor: pointer;
+    }
+    .map-search button:hover { background: var(--gold-light); }
+
+    .map-sidebar-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    /* ── monastery list items ────────────────────────────────────────────────── */
+    .map-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 13px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+    .map-item:hover,
+    .map-item.active {
+      border-color: rgba(201,168,76,0.5);
+      background: var(--surface2);
+    }
+    .map-item h4 {
+      font-family: var(--font-display);
+      font-size: 0.88rem;
+      color: var(--white);
+      margin-bottom: 3px;
+    }
+    .map-item .loc  { font-size: 0.78rem; color: var(--muted); margin-bottom: 3px; }
+    .map-item .meta { font-size: 0.74rem; color: var(--gold); margin-bottom: 8px; }
+    .map-item .btns { display: flex; gap: 6px; flex-wrap: wrap; }
+    .map-item .btn-xs {
+      font-size: 0.72rem; padding: 3px 9px;
+      border-radius: 6px; background: var(--bg3);
+      border: 1px solid var(--border); color: var(--muted);
+      text-decoration: none; display: inline-block;
+      transition: all var(--transition);
+    }
+    .map-item .btn-xs:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* ── map container ───────────────────────────────────────────────────────── */
+    #map {
+      /* explicit height is the key fix — Leaflet needs a pixel height */
+      height: 100%;
+      min-height: 400px;
+      width: 100%;
+      z-index: 1;
+    }
+
+    /* ── Leaflet popup dark theme ────────────────────────────────────────────── */
+    .leaflet-popup-content-wrapper {
+      background: #1e1e2e !important;
+      border: 1px solid rgba(255,255,255,0.1) !important;
+      border-radius: 12px !important;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6) !important;
+    }
+    .leaflet-popup-tip-container { display: none; }
+    .leaflet-popup-content { margin: 14px 16px !important; color: #f0ede8 !important; }
+    .popup-name  { font-family:'Cinzel',serif; font-size:0.95rem; color:#c9a84c; margin-bottom:4px; }
+    .popup-loc   { font-size:0.8rem; color:#8a8799; margin-bottom:4px; }
+    .popup-meta  { font-size:0.78rem; color:#8a8799; margin-bottom:10px; }
+    .popup-btns  { display:flex; gap:6px; flex-wrap:wrap; }
+    .popup-btn   {
+      display:inline-block; color:#c9a84c; font-size:0.8rem;
+      padding:5px 11px; border:1px solid rgba(201,168,76,0.35);
+      border-radius:6px; text-decoration:none;
+      transition: background 0.2s;
+    }
+    .popup-btn:hover { background:rgba(201,168,76,0.12); color:#e8c97a; }
+
+    /* ── responsive ──────────────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .map-body {
+        grid-template-columns: 1fr;
+        grid-template-rows: 200px 1fr;
+      }
+      .map-sidebar {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        max-height: 200px;
+      }
+      #map { min-height: 350px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="navbar-placeholder"></div>
+
+<div class="map-body">
+  <!-- sidebar -->
+  <div class="map-sidebar">
+    <div class="map-sidebar-header">
+      <h2>🗺️ Sikkim Monasteries</h2>
+      <div class="map-search">
+        <input id="map-search" type="text" placeholder="Search by name or location…" autocomplete="off"/>
+        <button onclick="filterList()">Go</button>
+      </div>
+    </div>
+    <div class="map-sidebar-list" id="sidebar-list">
+      <div class="loading-spinner"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- map fills remaining space -->
+  <div id="map"></div>
+</div>
+
+<div id="footer-placeholder"></div>
+
+<!-- our scripts come AFTER Leaflet (already loaded in <head>) -->
+<script src="js/api.js"></script>
+<script src="js/components.js"></script>
+<script src="js/main.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  let leafletMap, goldIcon, pulseIcon;
+  let activeEl = null, activeMk = null;
+  let allItems = []; // [{el, marker, m}]
+
+  /* ── icon factory ─────────────────────────────────────────────────────────── */
+  function makeIcon(color, size) {
+    return L.divIcon({
+      className: '',
+      html: `<div style="
+        width:${size}px; height:${size}px; border-radius:50%;
+        background:${color}; border:2.5px solid #fff;
+        box-shadow:0 2px 10px rgba(0,0,0,0.55);
+        transition: transform 0.15s;
+      "></div>`,
+      iconSize:    [size, size],
+      iconAnchor:  [size / 2, size / 2],
+      popupAnchor: [0, -(size / 2) - 4],
+    });
+  }
+
+  /* ── sidebar filter ──────────────────────────────────────────────────────── */
+  function filterList() {
+    const q = (document.getElementById('map-search').value || '').trim().toLowerCase();
+    allItems.forEach(({ el, m }) => {
+      const hit = !q ||
+        m.name.toLowerCase().includes(q) ||
+        m.location.toLowerCase().includes(q) ||
+        (m.festival || '').toLowerCase().includes(q);
+      el.style.display = hit ? '' : 'none';
+    });
+  }
+
+  /* ── select a monastery (highlight sidebar + marker) ───────────────────── */
+  function selectMonastery(el, marker, lat, lng, openPopup) {
+    if (activeEl)  activeEl.classList.remove('active');
+    if (activeMk)  activeMk.setIcon(goldIcon);
+    el.classList.add('active');
+    marker.setIcon(pulseIcon);
+    activeEl = el;
+    activeMk = marker;
+    if (openPopup) {
+      leafletMap.flyTo([lat, lng], 13, { duration: 1.1 });
+      setTimeout(() => marker.openPopup(), 800);
+    }
+  }
+
+  /* ── build sidebar item ──────────────────────────────────────────────────── */
+  function buildItem(m, marker) {
+    const el = document.createElement('div');
+    el.className = 'map-item';
+    el.innerHTML = `
+      <h4>${m.name}</h4>
+      <div class="loc">📍 ${m.location}</div>
+      <div class="meta">🏛️ ${m.founded} &nbsp;·&nbsp; 🎉 ${m.festival}</div>
+      <div class="btns">
+        <a href="monastery-detail.html?id=${m._id}" class="btn-xs">Explore</a>
+        ${m.views && m.views.length
+          ? `<a href="monastery-detail.html?id=${m._id}" class="btn-xs"
+               onclick="sessionStorage.setItem('m360_tab','tours')">🌐 360°</a>`
+          : ''}
+        <a href="monastery-detail.html?id=${m._id}" class="btn-xs"
+           onclick="sessionStorage.setItem('m360_tab','audio')">🔊 Audio</a>
+      </div>`;
+
+    const { latitude: lat, longitude: lng } = m.coordinates;
+
+    // click on card → fly map
+    el.addEventListener('click', e => {
+      if (e.target.tagName === 'A') return;
+      selectMonastery(el, marker, lat, lng, true);
+    });
+
+    // click on marker → highlight card
+    marker.on('click', () => {
+      selectMonastery(el, marker, lat, lng, false);
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
+    return el;
+  }
+
+  /* ── build popup HTML ────────────────────────────────────────────────────── */
+  function buildPopup(m) {
+    return `
+      <div class="popup-name">${m.name}</div>
+      <div class="popup-loc">📍 ${m.location}</div>
+      <div class="popup-meta">🏛️ Founded ${m.founded} &nbsp;·&nbsp; 🎉 ${m.festival}</div>
+      <div class="popup-btns">
+        <a class="popup-btn" href="monastery-detail.html?id=${m._id}">Explore →</a>
+        ${m.views && m.views.length
+          ? `<a class="popup-btn" href="monastery-detail.html?id=${m._id}"
+               onclick="sessionStorage.setItem('m360_tab','tours')">🌐 360°</a>`
+          : ''}
+        <a class="popup-btn" href="monastery-detail.html?id=${m._id}"
+           onclick="sessionStorage.setItem('m360_tab','audio')">🔊 Guide</a>
+      </div>`;
+  }
+
+  /* ── main init ───────────────────────────────────────────────────────────── */
+  async function initMap() {
+    // Leaflet is loaded in <head> so L is always defined here
+    goldIcon  = makeIcon('#c9a84c', 16);
+    pulseIcon = makeIcon('#e8c97a', 22);
+
+    leafletMap = L.map('map', {
+      center: [27.35, 88.45],
+      zoom: 9,
+      zoomControl: true,
+    });
+
+    // Dark CARTO tile layer
+    L.tileLayer(
+      'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+      {
+        attribution:
+          '&copy; <a href="https://carto.com">CARTO</a> ' +
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        subdomains: 'abcd',
+        maxZoom: 19,
+      }
+    ).addTo(leafletMap);
+
+    // Wire sidebar search
+    document.getElementById('map-search')
+      .addEventListener('keydown', e => { if (e.key === 'Enter') filterList(); });
+
+    // Load monasteries
+    const sideList = document.getElementById('sidebar-list');
+    try {
+      const { data } = await API.getMonasteries();
+      const valid = (data || []).filter(m => m.coordinates && m.coordinates.latitude);
+
+      if (!valid.length) {
+        sideList.innerHTML =
+          '<p style="color:var(--muted);font-size:0.85rem;padding:12px 4px;">' +
+          'No monastery data found.<br>Run <code>node scripts/seedDatabase.js</code> first.</p>';
+        return;
+      }
+
+      sideList.innerHTML = '';
+
+      valid.forEach(m => {
+        const { latitude: lat, longitude: lng } = m.coordinates;
+
+        const marker = L.marker([lat, lng], { icon: goldIcon })
+          .addTo(leafletMap)
+          .bindPopup(buildPopup(m), { maxWidth: 280, closeButton: true });
+
+        const el = buildItem(m, marker);
+        allItems.push({ el, marker, m });
+        sideList.appendChild(el);
+      });
+
+      // Fit all markers into view
+      const latlngs = valid.map(m => [m.coordinates.latitude, m.coordinates.longitude]);
+      leafletMap.fitBounds(L.latLngBounds(latlngs).pad(0.18));
+
+      // Force a size recalculate after layout settles (fixes blank-tile issue)
+      setTimeout(() => leafletMap.invalidateSize(), 200);
+
+    } catch (err) {
+      console.error('Map load error:', err);
+      sideList.innerHTML =
+        '<p style="color:var(--muted);font-size:0.85rem;padding:12px 4px;">' +
+        'Could not load monasteries.<br>Make sure the backend is running on port 5000.</p>';
+    }
+  }
+
+  // Run after DOM + components are ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMap);
+  } else {
+    initMap();
+  }
+})();
+</script>
+</body>
+</html>
