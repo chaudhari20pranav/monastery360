@@ -2,17 +2,22 @@
 // Detects environment automatically for deployment compatibility
 
 const API = (() => {
-  // Auto-detect API base URL:
-  // - If served from same origin (deployed), use relative path
-  // - If on localhost frontend dev server, point to local backend
+
   function getBaseUrl() {
-    const { hostname, port, protocol } = window.location;
-    // If served from a Live Server dev port (5500/5501) → point to backend
+    const { hostname, port } = window.location;
+
+    // Case 1: Local frontend dev server (Live Server)
     if ((hostname === 'localhost' || hostname === '127.0.0.1') &&
         (port === '5500' || port === '5501')) {
       return 'http://localhost:5000/api';
     }
-    // Served from same origin (port 5000 locally, or deployed) → use relative path
+
+    // Case 2: Frontend deployed on Netlify
+    if (hostname.includes('netlify.app')) {
+      return 'https://monastery360-6slq.onrender.com/api';
+    }
+
+    // Case 3: Backend served together (same origin, e.g., Spring Boot)
     return '/api';
   }
 
@@ -25,9 +30,15 @@ const API = (() => {
         credentials: 'include',
         ...options,
       });
+
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+      if (!res.ok) {
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+
       return data;
+
     } catch (err) {
       console.error(`API Error [${endpoint}]:`, err.message);
       throw err;
@@ -49,8 +60,13 @@ const API = (() => {
     getFestivalsByMonth: (year, month) => request(`/festivals/month/${year}/${month}`),
 
     // ── Bookings ──────────────────────────────────────────────────────────────
-    createBooking: (payload) => request('/bookings', { method: 'POST', body: JSON.stringify(payload) }),
-    getBookings:   ()        => request('/bookings'),
+    createBooking: (payload) =>
+      request('/bookings', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      }),
+
+    getBookings: () => request('/bookings'),
 
     // ── Scriptures ────────────────────────────────────────────────────────────
     getScriptures:    ()      => request('/scriptures'),
@@ -61,12 +77,23 @@ const API = (() => {
       `${BASE_URL}/audio/monastery/${monasteryId}/language/${lang}`,
 
     // ── Chat ──────────────────────────────────────────────────────────────────
-    chat:     (message) => request('/chat', { method: 'POST', body: JSON.stringify({ message }) }),
-    chatPing: ()        => request('/chat', { method: 'POST', body: JSON.stringify({ check: true }) }),
+    chat: (message) =>
+      request('/chat', {
+        method: 'POST',
+        body: JSON.stringify({ message })
+      }),
 
-    // Expose base for debugging
+    chatPing: () =>
+      request('/chat', {
+        method: 'POST',
+        body: JSON.stringify({ check: true })
+      }),
+
+    // Debug
     BASE_URL,
   };
+
 })();
 
+// Make globally accessible
 window.API = API;
